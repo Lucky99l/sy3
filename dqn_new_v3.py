@@ -61,13 +61,12 @@ optimizer = optim.Adam(policy_model.parameters(), lr=1e-4)
 replay_buffer = deque(maxlen=1000)
 
 loss_total = []
-episode_reward_total, avg_episode_reward = [], []
-step_total, avg_step = [], []
-
-step_record = []
-score_record = []
 
 score_total = []
+episode_reward_total = []
+step_total = []
+
+test_score_total = []
 test_episode_reward_total = []
 test_step_total = []
 
@@ -85,8 +84,8 @@ for i in range(num_rounds):
     count_stop = 0
 
     # epsilon for epsilon greedy strategy
-    if epsilon > eps_min:
-        epsilon *= eps_decay
+    # if epsilon > eps_min:
+    #     epsilon *= eps_decay
 
     # print('reset here')
     for j in range(1000):
@@ -194,11 +193,11 @@ for i in range(num_rounds):
             target_model.load_state_dict(policy_model.state_dict())
             break
         
-        if count_stop >= 20:
+        if count_stop >= 10:
             # step_idx = 999
             break
 
-    if count_stop < 20:
+    if count_stop < 10:
         episode_reward_total.append(episode_reward)
         step_total.append(step_idx)
         score_list_ = []
@@ -206,7 +205,7 @@ for i in range(num_rounds):
             if score_list[t] >= 0:
                 score_list_.append(score_list[t])
 
-        score_record.append(sum(score_list_))
+        score_total.append(sum(score_list_))
 
     # test
     if i % 100 == 0:
@@ -247,7 +246,7 @@ for i in range(num_rounds):
             if score[l] >= 0:
                 score_.append(score[l])
 
-        score_total.append(sum(score_))
+        test_score_total.append(sum(score_))
         test_episode_reward_total.append(test_episode_reward)
         test_step_total.append(k)
 
@@ -270,13 +269,12 @@ if not os.path.exists(path + name1):
     os.mkdir(path + name1)
 
 # save data and model
-save_data(score_record, path + name1 + '/score.pickle')
+save_data(score_total, path + name1 + '/score.pickle')
 save_data(episode_reward_total, path + name1 + '/episode_reward.pickle')
 save_data(step_total, path + name1 + '/step.pickle')
 
-save_data(score_total, path + name1 + '/test_score.pickle')
+save_data(test_score_total, path + name1 + '/test_score.pickle')
 save_data(test_episode_reward_total, path + name1 + '/test_episode_reward.pickle')
 save_data(test_step_total, path + name1 + '/test_step.pickle')
-
 
 torch.save(policy_model, './save_model/' + name1 + '_model.pkl')

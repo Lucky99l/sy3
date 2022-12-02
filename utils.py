@@ -35,6 +35,7 @@ def plot_graph(loss_total, avg_episode_reward, avg_step, path):
         ax1.plot(x, loss_total)
         fig1.savefig('./picture/' + path + '_loss' + '.png', dpi=600, format='png')
         # plt.show()
+        plt.close()
 
     if (avg_episode_reward != None) and (avg_step != None):
         episode_index = np.linspace(0, len(avg_episode_reward), len(avg_episode_reward))
@@ -47,6 +48,7 @@ def plot_graph(loss_total, avg_episode_reward, avg_step, path):
         ax2[1].legend()
         ax2[1].set(xlabel='episode/100', ylabel='avg_step')
         fig2.savefig('./picture/' + path + '.png', dpi=600, format='png')
+        plt.close()
         # plt.show()
 
 def plot_train(data, data1=None, data2=None, title='abc', path='./path.png'):
@@ -58,6 +60,7 @@ def plot_train(data, data1=None, data2=None, title='abc', path='./path.png'):
     plt.title(title)
     ax2.set(xlabel='episode/100')
     fig2.savefig(path, dpi=600, format='png')
+    plt.close()
     # plt.show()
 
 def plot_hist(data, title, path):
@@ -89,6 +92,7 @@ def plot_traj(length, height, pos1, pos3, path, index):
     ax2.legend()
     plt.title('index' + str(index))
     fig2.savefig(path, dpi=600, format='png')
+    plt.close()
 
 def plot_trajs(reward, length, height, pos1, pos2, episode, path):
     if not os.path.exists(path):
@@ -116,6 +120,7 @@ def plot_trajs(reward, length, height, pos1, pos2, episode, path):
     ax2.legend()
     plt.title('traj')
     fig2.savefig(path + '/' + str(episode) +'_' + str(reward) + '.png', dpi=600, format='png')
+    plt.close()
 
 def save_data(data, path): 
     with open(path, 'wb') as file:

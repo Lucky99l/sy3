@@ -1,6 +1,5 @@
 import os
 import numpy as np
-import seaborn as sns
 import matplotlib.pyplot as plt
 
 from utils import load_data, plot_graph, plot_train, plot_traj, plot_trajs, average_filter
