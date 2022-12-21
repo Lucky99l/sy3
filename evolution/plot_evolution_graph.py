@@ -3,12 +3,10 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
-sys.path.append("/home/ustc/baojie/scheduler/sy3")
-
 from utils import load_data
 
-data = load_data('./fitness4.pickle')
-# data2 = load_data('./index2.pickle')
+data = load_data('./fitness3.pickle')
+# data2 = load_data('./index3.pickle')
 
 # data proprecessing
 data_avg = []
@@ -35,4 +33,4 @@ plt.xlabel('generation')
 plt.ylabel('fitness')
 ax.legend()
 # plt.show()
-fig.savefig('./fitness4.png', dpi=600, format='png')
+fig.savefig('./fitness3.png', dpi=600, format='png')
