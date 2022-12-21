@@ -1,8 +1,5 @@
-import sys
 import random
 import numpy as np
-
-sys.path.append("/home/ustc/baojie/scheduler/sy3")
 
 from utils import get_book, save_data
 
