@@ -57,8 +57,17 @@ def plot_train(data, data1=None, data2=None, title='abc', path='./path.png'):
     ax2.plot(episode_index, data, 'r-')
     if (data1 != None) and (data2 != None):
         ax2.fill_between(episode_index, data1, data2, color='r', alpha=0.2)
+
     plt.title(title)
     ax2.set(xlabel='episode/100')
+ 
+    # if title == 'avg_score':
+    #     plt.yticks(np.arange(100, 180, 10))
+    #     plt.ylim((100, 180))
+    # elif title == 'avg_step':
+    #     plt.yticks(np.arange(50, 200, 20))
+    #     plt.ylim((50, 200))
+
     fig2.savefig(path, dpi=600, format='png')
     plt.close()
     # plt.show()

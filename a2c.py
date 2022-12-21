@@ -20,11 +20,11 @@ seeds = 999
 set_seeds(seeds)
 
 # Hyperparameters
-num_rounds = int(2e4)
+num_rounds = int(3e4)
 
 # save path
-name1 = 'sy3_1'
-name2 = 'sy3_1_test'
+name1 = 'sy3_5'
+name2 = 'sy3_5_test'
 path = './a2c_result/data/'
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -41,26 +41,26 @@ class A2C:
         # scheduler = optim.lr_scheduler.StepLR(optimizer, 3, 0.1)
         self.value_optimizer = optim.Adam(self.value_model.parameters(), lr=1e-4)
 
-        self.test_score_total = []
-        self.test_step_total = []
-        self.test_episode_reward_total = []
-
-
     def choose_action(self, state):
-        prob = Categorical(self.policy_model(torch.from_numpy(state).to(torch.float32).unsqueeze(0).to(device)).cpu())
+        prob = Categorical(self.policy_model(torch.from_numpy(state).to(torch.float32).unsqueeze(0).to(device)))
         action = prob.sample()
         return prob, action
 
-    def compute_returns(self, next_value, rewards, gamma=0.99):
+    def compute_returns(self, next_value, rewards, masks, gamma=0.99):
         R = next_value
         returns = []
         for step in reversed(range(len(rewards))):
-            R = rewards[step] + gamma * R
+            R = rewards[step] + gamma * R * masks[step]
             returns.insert(0, R)
-        return torch.tensor(returns)
+        return returns
     
-    def learn(self, next_value, log_probs, rewards, values):
-        Gt = self.compute_returns(next_value, rewards)
+    def learn(self, next_value, log_probs, rewards, values, masks):
+        Gt = self.compute_returns(next_value, rewards, masks)
+
+        Gt = torch.cat(Gt).detach()
+        values = torch.cat(values)
+        log_probs = torch.cat(log_probs)
+
         At = Gt - values
         actor_loss  = -(log_probs * At.detach()).mean()
         actor_loss.requires_grad_(True)
@@ -75,7 +75,78 @@ class A2C:
         critic_loss.backward()
         self.value_optimizer.step()
 
-    def test(self, episode):
+
+    def save(self):
+        torch.save(self.policy_model, './a2c_result/save_model/' + name1 + '_model.pkl')
+        save_data(score_total, path + name1 + '/test_score.pickle')
+        save_data(episode_reward_total, path + name1 + '/test_episode_reward.pickle')
+        save_data(step_total, path + name1 + '/test_step.pickle')
+
+
+step_total = []
+score_total = []
+episode_reward_total = []
+
+test_score_total = []
+test_episode_reward_total = []
+test_step_total = []
+
+a2c = A2C()
+for i in range(num_rounds):
+    # change this for while not true once it works
+    state = env.reset()
+    episode_reward = 0
+    action = -5
+    score_list = []
+    count_stop = 0
+    rewards = []
+    log_probs = []
+    values = []
+    masks = []
+
+    count_stop = 0
+
+    for j in range(1000):
+        old_action = action
+        probs, action = a2c.choose_action(state)
+        log_prob = probs.log_prob(action)
+        value = a2c.value_model(torch.from_numpy(state).to(torch.float32).unsqueeze(0).to(device))
+
+        next_state, reward, done, index, agent_pos, _ = env.step(action, old_action)
+
+        score_list.append(env.scores)
+        episode_reward += reward
+
+        # if reward < 0:
+        #     count_stop += 1
+
+        log_probs.append(log_prob)
+        rewards.append(torch.FloatTensor([reward]).unsqueeze(1).to(device))
+        values.append(value)
+        masks.append(torch.FloatTensor([1-done]).unsqueeze(1).to(device))
+
+        # Move to the next state
+        state = next_state
+
+        # if done or (count_stop >= 10):
+        if done:
+            break
+
+    next_v = a2c.value_model(torch.FloatTensor(torch.from_numpy(next_state).to(torch.float32).unsqueeze(0)).to(device))
+    a2c.learn(next_v, log_probs, rewards, values, masks)
+
+    # if count_stop < 10:
+    episode_reward_total.append(episode_reward)
+    step_total.append(j)
+    score_list_ = []
+    for t in range(len(score_list)):
+        if score_list[t] >= 0:
+            score_list_.append(score_list[t])
+
+    score_total.append(sum(score_list_))
+
+    # test
+    if i % 100 == 0:
         test_score_list = []
         test_log_probs = []
         test_rewards = []
@@ -112,80 +183,15 @@ class A2C:
             if test_score_list[t] >= 0:
                 test_score_list_.append(test_score_list[t])
 
-        self.test_score_total.append(sum(test_score_list_))
-        self.test_episode_reward_total.append(test_episode_reward)
-        self.test_step_total.append(k)
+        test_score_total.append(sum(test_score_list_))
+        test_episode_reward_total.append(test_episode_reward)
+        test_step_total.append(k)
 
-        print('episode: {}'.format(episode))
+        print('episode: {}'.format(i))
         print('stopped_step: {}'.format(k))
         print('episode_reward: {}'.format(test_episode_reward))
         print('score: {}'.format(sum(test_score_list_)))
         print('----------------------------\n')
-
-    def save(self):
-        torch.save(self.policy_model, './a2c_result/save_model/' + name1 + '_model.pkl')
-        save_data(score_total, path + name1 + '/test_score.pickle')
-        save_data(episode_reward_total, path + name1 + '/test_episode_reward.pickle')
-        save_data(step_total, path + name1 + '/test_step.pickle')
-
-
-step_total = []
-score_total = []
-episode_reward_total = []
-
-a2c = A2C()
-for i in range(num_rounds):
-    # change this for while not true once it works
-    state = env.reset()
-    episode_reward = 0
-    action = -5
-    score_list = []
-    count_stop = 0
-    rewards = []
-    log_probs = []
-    values = []
-
-    for j in range(1000):
-        old_action = action
-        probs, action = a2c.choose_action(state)
-        log_prob = probs.log_prob(action)
-        value = a2c.value_model(torch.from_numpy(state).to(torch.float32).unsqueeze(0).to(device)).cpu().item()
-
-        next_state, reward, done, index, agent_pos, _ = env.step(action, old_action)
-
-        score_list.append(env.scores)
-        episode_reward += reward
-        reward = torch.tensor(reward)
-
-        log_probs.append(log_prob)
-        rewards.append(reward)
-        values.append(value)
-
-        # Move to the next state
-        state = next_state
-
-        if done:
-            break
-
-    episode_reward_total.append(episode_reward)
-    step_total.append(j)
-    score_list_ = []
-    for t in range(len(score_list)):
-        if score_list[t] >= 0:
-            score_list_.append(score_list[t])
-
-    score_total.append(sum(score_list_))
-
-    log_probs = torch.tensor(log_probs)
-    rewards = torch.tensor(rewards)
-    values = torch.tensor(values)
-
-    next_v = a2c.value_model(torch.from_numpy(next_state).to(torch.float32).unsqueeze(0).to(device)).cpu().item()
-    a2c.learn(next_v, log_probs, rewards, values)
-
-    # test
-    if i % 100 == 0:
-        a2c.test(i)
 
 # save data
 if not os.path.exists(path + name1):

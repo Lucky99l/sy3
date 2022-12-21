@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torch.distributions import Categorical
 
 # ResBlock
 # class ResBlock(nn.Module):
@@ -179,3 +180,64 @@ class Critic(nn.Module):
         out = self.fc2(self.relu(self.fc1(out)))
         return out
 
+class A3CNet(nn.Module):
+    def __init__(self, n_state, n_actions):
+        super(A3CNet, self).__init__()        
+        self.conv1 = nn.Conv2d(n_state, 4, kernel_size=(1, 3), stride=(1, 2), padding=0)
+        self.bn1 = nn.BatchNorm2d(4)
+        self.pool1 = nn.MaxPool2d(1, 1)
+        self.conv2 = nn.Conv2d(4, 6, kernel_size=(2, 2), stride=(2, 2), padding=0)
+        self.bn2 = nn.BatchNorm2d(6)
+        self.pool2 = nn.MaxPool2d(1, 1)
+        self.fc1 = nn.Linear(6 * 16 * 24, 128)
+        self.fc2 = nn.Linear(128, n_actions)
+
+        self.conv3 = nn.Conv2d(n_state, 4, kernel_size=(1, 3), stride=(1, 2), padding=0)
+        self.bn3 = nn.BatchNorm2d(4)
+        self.pool3 = nn.MaxPool2d(1, 1)
+        self.conv4 = nn.Conv2d(4, 6, kernel_size=(2, 2), stride=(2, 2), padding=0)
+        self.bn4 = nn.BatchNorm2d(6)
+        self.pool4 = nn.MaxPool2d(1, 1)
+        self.fc3 = nn.Linear(6 * 16 * 24, 128)
+        self.fc4 = nn.Linear(128, 1)
+
+        self.relu = nn.ReLU()
+        # self.softmax = nn.Softmax(dim=1)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                # nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, 0, 0.01)
+                nn.init.constant_(m.bias, 0)
+                
+    def forward(self, x):
+        out1 = self.pool1(self.relu(self.bn1(self.conv1(x))))
+        out1 = self.pool2(self.relu(self.bn2(self.conv2(out1))))
+        out1 = out1.view(out1.size(0), -1)
+        out1 = self.fc2(self.relu(self.fc1(out1)))
+
+        out2 = self.pool3(self.relu(self.bn3(self.conv3(x))))
+        out2 = self.pool4(self.relu(self.bn4(self.conv4(out2))))
+        out2 = out2.view(out2.size(0), -1)
+        out2 = self.fc4(self.relu(self.fc3(out2)))
+        return out1, out2
+
+    def choose_action(self, s):
+        self.eval()
+        logits, _ = self.forward(torch.from_numpy(s).to(torch.float32).unsqueeze(0))
+        prob = Categorical(logits)
+        action = prob.sample()
+        return action.numpy()[0]
+    
+    def loss_function(self, s, a, v_t):
+        self.train()
+        logits, values = self.forward(torch.from_numpy(s).to(torch.float32))
+        td = v_t - values
+        critic_loss = td.pow(2)
+
+        m = Categorical(logits)
+        action_loss = -(m.log_prob(a) * td.detach())
+        total_loss = (critic_loss + action_loss).mean()
+        return total_loss

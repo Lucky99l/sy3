@@ -24,7 +24,7 @@ set_seeds(seeds)
 batch_size = 32 # 16, 64
 gamma = 0.5
 
-epsilon = 0.3
+epsilon = 0.5
 eps_decay = 0.9
 eps_min = 0.001      # Minimal exploration rate (epsilon-greedy)
 
@@ -35,8 +35,8 @@ replay_limit = 1000  # Number of steps until starting replay
 # weight_update = 1000 # Number of steps until updating the target weights
 
 # save path
-name1 = 'sy3_14'
-name2 = 'sy3_14_test'
+name1 = 'sy3_16'
+name2 = 'sy3_16_test'
 path = './data/'
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -84,8 +84,8 @@ for i in range(num_rounds):
     count_stop = 0
 
     # epsilon for epsilon greedy strategy
-    # if epsilon > eps_min:
-    #     epsilon *= eps_decay
+    if epsilon > eps_min:
+        epsilon *= eps_decay
 
     # print('reset here')
     for j in range(1000):

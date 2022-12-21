@@ -5,10 +5,11 @@ import matplotlib.pyplot as plt
 from utils import load_data, plot_graph, plot_train, plot_traj, plot_trajs, average_filter
 
 # path
-name1 = 'sy3_14'
-name2 = 'sy3_14_test'
-path1 = './data/'
-path2 = './picture/'
+name1 = 'sy3_1'
+# name2 = 'sy3_1_test'
+path1 = './a3c/a3c_result/data/'
+path2 = './a3c/a3c_result/picture/'
+
 if not os.path.exists(path2 + name1):
     os.mkdir(path2 + name1)
 
@@ -16,11 +17,12 @@ if not os.path.exists(path2 + name1):
 score = load_data(path1 + name1 + '/score.pickle')
 episode_reward = load_data(path1 + name1 + '/episode_reward.pickle')
 step = load_data(path1 + name1 + '/step.pickle')
+print(score)
 
 # test data
-test_score = load_data(path1 + name1 + '/test_score.pickle')
-test_episode_reward = load_data(path1 + name1 + '/test_episode_reward.pickle')
-test_step = load_data(path1 + name1 + '/test_step.pickle')
+# test_score = load_data(path1 + name1 + '/test_score.pickle')
+# test_episode_reward = load_data(path1 + name1 + '/test_episode_reward.pickle')
+# test_step = load_data(path1 + name1 + '/test_step.pickle')
 
 # data proprecessing
 interval = 100
@@ -71,10 +73,15 @@ plot_train(episode_reward, title='episode_reward', path=path2 + name1 + '/train_
 # plot_train(avg_step, title='avg_step', path=path2 + name1 + '/avg_step.png')
 # plot_train(avg_episode_reward, title='avg_episode_reward', path=path2 + name1 + '/avg_train_reward.png')
 
-plot_train(avg_score, max_score, min_score, title='avg_score', path=path2 + name1 + '/avg_score.png')
+plot_train(avg_score, title='avg_score', path=path2 + name1 + '/avg_score.png')
 # plot_train(avg_rate, 'avg_rate', path2 + name1 + '/avg_rate.png')
-plot_train(avg_step, max_step, min_step, title='avg_step', path=path2 + name1 + '/avg_step.png')
-plot_train(avg_episode_reward, max_episode_reward, min_episode_reward, title='avg_episode_reward', path=path2 + name1 + '/avg_train_reward.png')
+plot_train(avg_step, title='avg_step', path=path2 + name1 + '/avg_step.png')
+plot_train(avg_episode_reward, title='avg_episode_reward', path=path2 + name1 + '/avg_train_reward.png')
+
+plot_train(avg_score, max_score, min_score, title='avg_score', path=path2 + name1 + '/avg_score_1.png')
+# plot_train(avg_rate, 'avg_rate', path2 + name1 + '/avg_rate.png')
+plot_train(avg_step, max_step, min_step, title='avg_step', path=path2 + name1 + '/avg_step_1.png')
+plot_train(avg_episode_reward, max_episode_reward, min_episode_reward, title='avg_episode_reward', path=path2 + name1 + '/avg_train_reward_1.png')
 
 # train average filter graph
 # print(np.mean(avg_episode_reward))
@@ -90,7 +97,7 @@ plot_train(avg_episode_reward, max_episode_reward, min_episode_reward, title='av
 # plot_train(avg_step_filter, 'avg_step', path2 + name1 + '/train_filter_avg_step_400.png')
 
 # test graph
-plot_train(test_score, title='test_score', path=path2 + name1 + '/test_score.png')
-plot_train(test_episode_reward, title='test_episode_reward', path=path2 + name1 + '/test_episode_reward.png')
-plot_train(test_step, title='test_stesp', path=path2 + name1 + '/test_step.png')
+# plot_train(test_score, title='test_score', path=path2 + name1 + '/test_score.png')
+# plot_train(test_episode_reward, title='test_episode_reward', path=path2 + name1 + '/test_episode_reward.png')
+# plot_train(test_step, title='test_stesp', path=path2 + name1 + '/test_step.png')
 
