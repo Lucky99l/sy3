@@ -164,8 +164,8 @@ def main():
         if i % 100 == 0:
             print("generation: {} best fitness: {} index: {}".format(i, max(fitness), index))
 
-    save_data(best_fitness, './fitness4.pickle')
-    save_data(ind_list, './index4.pickle')
+    save_data(best_fitness, './fitness3.pickle')
+    save_data(ind_list, './index3.pickle')
 
 if __name__ == "__main__":
     main()
