@@ -26,20 +26,21 @@ set_seeds(seeds)
 batch_size = 32 # 16, 64
 gamma = 0.5
 
-epsilon = 0.3
+epsilon = 0.1
 eps_decay = 0.9
 eps_min = 0.001      # Minimal exploration rate (epsilon-greedy)
 
-num_rounds = int(2e4)
+num_rounds = int(1e4)
 # num_episodes = 500
 learning_limit = 100
 replay_limit = 1000  # Number of steps until starting replay
 # weight_update = 1000 # Number of steps until updating the target weights
 
 # save path
-name1 = 'sy3_8'
-name2 = 'sy3_8_test'
-path = './dqn_result/result/'
+name1 = 'sy3_24'
+name2 = 'sy3_24_test'
+path_dir = './dqn_result_2/'
+path = path_dir + 'result/'
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -81,9 +82,13 @@ for i in range(num_rounds):
     episode_reward = 0
     done = False
     step_idx = 0
-    buffer = []
+    count_stop = 0
+    # buffer = []
     action = -5
     score_list = []
+    agent_pos_record = []
+    expect_pos_record = [[16, 50]]
+    bad_choice = []
 
     # epsilon for epsilon greedy strategy
     if epsilon > eps_min:
@@ -115,6 +120,14 @@ for i in range(num_rounds):
         fre_count += 1
         # buffer.append((state, action, reward, next_state, done))
         replay_buffer.append((state, action, reward, next_state, done))
+        if reward < 0:
+            count_stop += 1
+
+        if i % 100 == 0:
+            agent_pos_record.append(agent_pos)
+            expect_pos_record.append(env.position)
+            if reward < 0:
+                bad_choice.append(agent_pos)
 
         # print('here rewards', episode_reward, reward, step_idx)
 
@@ -124,7 +137,7 @@ for i in range(num_rounds):
         # print('len buffer', len(replay_buffer))
 
         # once we're ready to learn then start learning with mini batches
-        if (len(replay_buffer) == replay_limit) and (j % 10 == 0):
+        if (len(replay_buffer) == replay_limit) and (j % 5 == 0):
             # print('replay buffer')
             optimizer.zero_grad()
 
@@ -192,6 +205,9 @@ for i in range(num_rounds):
         if done:
             target_model.load_state_dict(policy_model.state_dict())
             break
+        
+        # if count_stop >= 10:
+        #     break
 
     episode_reward_total.append(episode_reward)
     step_total.append(step_idx)
@@ -201,52 +217,60 @@ for i in range(num_rounds):
             score_list_.append(score_list[t])
 
     score_record.append(sum(score_list_))
-
-    # test
-    if i % 100 == 0:
-        policy_model.eval()
-        # score, test_episode_reward, stopped_step = test(policy_model, device)
-        state_ = env.reset()
-        agent_pos_record = []
-        bad_choice = []
-        action_ = -5
-        test_episode_reward = 0
-        score = []
-        book = env.to_book
-
-        for k in range(1000):
-            old_action_ = action_
-            action_ = torch.argmax(policy_model(torch.from_numpy(state_).to(torch.float32).unsqueeze(0).to(device)).cpu()).item()
-            next_state_, reward_, done_, index_, agent_pos_, _ = env.step(action_, old_action_)
-            score.append(env.scores)
-            state_ = next_state_
-
-            if ((old_action_ == action_) and ((agent_pos_[0] == 0) or (agent_pos_[1] == 0) or (agent_pos_[0] == 31) or (agent_pos_[1] == 99))) or (old_action_+action_)==5 or (old_action_+action_)==1:
-                bad_choice.append(agent_pos_)
-
-            test_episode_reward += reward_
-            agent_pos_record.append(agent_pos_)
-
-            if done_:
-                break
-
-        # if i != 0:
-        #     plot_trajs(test_episode_reward, env.num_gps, env.num_slots, agent_pos_record, bad_choice, i, './train_traj_record/' + name1)
-        score_ = []
-        for l in range(len(score)):
-            if score[l] >= 0:
-                score_.append(score[l])
-
-        score_total.append(sum(score_))
-        test_episode_reward_total.append(test_episode_reward)
-        test_step_total.append(k)
-
-        policy_model.train()
+    if i % 100 ==0 :
+        plot_trajs(env.num_gps, env.num_slots, agent_pos_record, expect_pos_record, bad_choice, i, path_dir + './train_traj_record/' + name1)
         print('episode: {}'.format(i))
-        print('stopped_step: {}'.format(k))
-        print('episode_reward: {}'.format(test_episode_reward))
-        print('score: {}'.format(sum(score_)))
+        print('stopped_step: {}'.format(j))
+        print('stopped_appt: {}'.format(env.appt_idx))
+        print('episode_reward: {}'.format(episode_reward))
+        print('score: {}'.format(sum(score_list_)))
         print('----------------------------\n')
+
+    # # test
+    # if i % 100 == 0:
+    #     policy_model.eval()
+    #     # score, test_episode_reward, stopped_step = test(policy_model, device)
+    #     state_ = env.reset()
+    #     agent_pos_record = []
+    #     bad_choice = []
+    #     action_ = -5
+    #     test_episode_reward = 0
+    #     score = []
+    #     book = env.to_book
+
+    #     for k in range(1000):
+    #         old_action_ = action_
+    #         action_ = torch.argmax(policy_model(torch.from_numpy(state_).to(torch.float32).unsqueeze(0).to(device)).cpu()).item()
+    #         next_state_, reward_, done_, index_, agent_pos_, _ = env.step(action_, old_action_)
+    #         score.append(env.scores)
+    #         state_ = next_state_
+
+    #         if ((old_action_ == action_) and ((agent_pos_[0] == 0) or (agent_pos_[1] == 0) or (agent_pos_[0] == 31) or (agent_pos_[1] == 99))) or (old_action_+action_)==5 or (old_action_+action_)==1:
+    #             bad_choice.append(agent_pos_)
+
+    #         test_episode_reward += reward_
+    #         agent_pos_record.append(agent_pos_)
+
+    #         if done_:
+    #             break
+
+    #     # if i != 0:
+    #     #     plot_trajs(test_episode_reward, env.num_gps, env.num_slots, agent_pos_record, bad_choice, i, './train_traj_record/' + name1)
+    #     score_ = []
+    #     for l in range(len(score)):
+    #         if score[l] >= 0:
+    #             score_.append(score[l])
+
+    #     score_total.append(sum(score_))
+    #     test_episode_reward_total.append(test_episode_reward)
+    #     test_step_total.append(k)
+
+    #     policy_model.train()
+        # print('episode: {}'.format(i))
+        # print('stopped_step: {}'.format(k))
+        # print('episode_reward: {}'.format(test_episode_reward))
+        # print('score: {}'.format(sum(score_)))
+        # print('----------------------------\n')
 
     # writer.add_scalar('episode_reward', episode_reward, i)
 
@@ -269,4 +293,4 @@ save_data(test_episode_reward_total, path + name1 + '/test_episode_reward.pickle
 save_data(test_step_total, path + name1 + '/test_step.pickle')
 
 
-torch.save(policy_model, './save_model/' + name1 + '_model.pkl')
+torch.save(policy_model, path_dir + 'save_model/' + name1 + '_model.pkl')

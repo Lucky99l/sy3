@@ -11,21 +11,21 @@ sys.path.append("/home/xliu/scheduler/sy3")
 
 def get_book(num_to_book):
     set_seeds(999)
-    # book_list =[]
-    # for _ in range(num_to_book):
-    #     book_list.append(np.random.randint(1,4))
-    path = r'/home/xliu/scheduler/sy3/data/JanData.xlsx'
-    data = pd.read_excel(path)
-    num_F2F = sum(data['F2F'])
-    num_HV = sum(data['HV'])
-    num_T = sum(data['T'])
-    num_V = sum(data['V'])
-    total = num_F2F + num_HV + num_T + num_V
-    p_1 = (num_F2F + num_V) / total
-    p_2 = num_T / total
-    p_3 = num_HV / total
+    book_list =[]
+    for _ in range(num_to_book):
+        book_list.append(np.random.randint(1,4))
+    # path = r'/home/xliu/scheduler/sy3/data/JanData.xlsx'
+    # data = pd.read_excel(path)
+    # num_F2F = sum(data['F2F'])
+    # num_HV = sum(data['HV'])
+    # num_T = sum(data['T'])
+    # num_V = sum(data['V'])
+    # total = num_F2F + num_HV + num_T + num_V
+    # p_1 = (num_F2F + num_V) / total
+    # p_2 = num_T / total
+    # p_3 = num_HV / total
 
-    book_list = random.choices([1, 2, 3], weights=[p_1, p_2, p_3], k=num_to_book)
+    # book_list = random.choices([1, 2, 3], weights=[p_1, p_2, p_3], k=num_to_book)
     return book_list
 
 def set_seeds(seeds):
@@ -89,34 +89,42 @@ def plot_train(data, data1=None, data2=None, title='abc', path='./path.png'):
     # plt.show()
 
 
-def plot_traj(length, height, pos1, pos3, path, index):
+def plot_trajs(length, height, pos1, pos2, pos3, episode, path):
+    if not os.path.exists(path):
+        os.mkdir(path)
     x1, y1, x2, y2 = [], [], [], []
     x3, y3 = [], []
     for i in range(len(pos1)):
         x1.append(pos1[i][1])
         y1.append(pos1[i][0])
 
+    for j in range(len(pos2)):
+        x2.append(pos2[j][1])
+        y2.append(pos2[j][0])
+
     for k in range(len(pos3)):
         x3.append(pos3[k][1])
         y3.append(pos3[k][0])
 
     x1, y1 = np.array(x1), np.array(y1)
+    x2, y2 = np.array(x2), np.array(y2)
     x3, y3 = np.array(x3), np.array(y3)
     fig2, ax2 = plt.subplots(figsize=(5,5))
     ax2.plot(x1, y1, 'r-', label='real_traj')
+    ax2.plot(x2, y2, 'b-', label='expect_traj')
     # print(x3)
     # print(len(y3))
-    if len(x3) != 0:
-        ax2.scatter(x3, y3, marker='*', color='y')
+    # if len(x3) != 0:
+    #     ax2.scatter(x3, y3, marker='*', color='y')
 
     plt.xlim(0, length)
     plt.ylim(0, height)
     ax2.legend()
-    plt.title('index' + str(index))
-    fig2.savefig(path, dpi=600, format='png')
+    plt.title('episode' + str(episode))
+    fig2.savefig(path + '/' + str(episode) + '.png', dpi=600, format='png')
     plt.close()
 
-def plot_trajs(reward, length, height, pos1, pos2, episode, path):
+def plot_traj(reward, length, height, pos1, pos2, episode, path):
     if not os.path.exists(path):
         os.mkdir(path)
     x1, y1, x2, y2 = [], [], [], []

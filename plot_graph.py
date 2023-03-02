@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 from utils import load_data, plot_graph, plot_train, plot_traj, plot_trajs, average_filter
 
 # path
-name1 = 'sy3_21'
+name1 = 'sy3_1_16'
 # name2 = 'sy3_1_test'
-path1 = './dqn/dqn_result/result/'
-path2 = './dqn/dqn_result/picture/'
+path1 = './dqn/dqn_result_1/result/'
+path2 = './dqn/dqn_result_1/picture/'
 
 if not os.path.exists(path2 + name1):
     os.mkdir(path2 + name1)

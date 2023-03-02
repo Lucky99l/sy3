@@ -4,7 +4,7 @@ import pandas as pd
 # bags = [(2,3),(3,4),(4,5),(5,6),(4,3),(7,12),(3,3),(2,2)]
 path = './data/large.csv'
 bags = pd.read_csv(path)
-limit_weight = int(0.1 * sum(bags['weight']))
+limit_weight = int(0.5 * sum(bags['weight']))
 print(limit_weight)
 # limit_weight = 15
 length = len(bags)
