@@ -19,8 +19,8 @@ to_book = get_book(num_to_book)
 # starting parameters
 num_gps = 100
 num_slots = 32
-num_pre_booked = 0.5 * num_gps * num_slots
-# num_pre_booked = 750
+# num_pre_booked = 0.5 * num_gps * num_slots
+num_pre_booked = 750
 agent_pos = [0, 0]
 
 
@@ -77,6 +77,7 @@ class SchedulerEnv(gym.Env):
         self.appt_idx = 0
         self.state = self.init_state.copy()
         self.state[1, self.agent_pos[0], self.agent_pos[1]] = 100.0
+        self.count = 0
         # left = max(self.agent_pos[1] - 2, 0)
         # right = min(self.agent_pos[1] + 2, self.num_gps - 1)
         # up = max(self.agent_pos[0] - 2, 0)
@@ -149,58 +150,75 @@ class SchedulerEnv(gym.Env):
         cells_to_check = self.to_book[self.appt_idx]
         score_ = -1
 
-        if cells_to_check == 1:
-            # print('good to check for single')
-            if self.state[0, self.agent_pos[0], self.agent_pos[1]] == 0:
-                self.state[0, self.agent_pos[0], self.agent_pos[1]] = 1
+        k = 0
+        if (self.agent_pos[0] + cells_to_check - 1) <= max_row:
+            while k < cells_to_check:
+                if (self.state[0, self.agent_pos[0] + k, self.agent_pos[1]] == 0):
+                    k += 1
+                    continue
+                else:
+                    break
+
+            if k == cells_to_check:
+                for j in range(cells_to_check):
+                    self.state[0, self.agent_pos[0] + j, self.agent_pos[1]] = 1
                 score_ = self.get_score()
                 self.appt_idx += 1
-
-        if cells_to_check == 2:
-            # check we're not at the bottom of the grid
-            if self.agent_pos[0] < max_row:
-                # check the next cells is also 0.0
-                # print('good to check for double')
-                if self.state[0, self.agent_pos[0], self.agent_pos[1]] == 0 and \
-                        self.state[0, (self.agent_pos[0] + 1), self.agent_pos[1]] == 0:
-                    self.state[0, self.agent_pos[0], self.agent_pos[1]] = 1
-                    self.state[0, (self.agent_pos[0] + 1), self.agent_pos[1]] = 1
-                    score_ = self.get_score()
-                    self.appt_idx += 1
-                    self.agent_pos = [(self.agent_pos[0] + 1), self.agent_pos[1]]
-                    # print('after booking', self.agent_pos)
-
-        if cells_to_check == 3:
-            # check we're not at the bottom of the grid
-            if self.agent_pos[0] + 1 < max_row:
-                # print('good to check for treble')
-                if self.state[0, self.agent_pos[0], self.agent_pos[1]] == 0 and \
-                        self.state[0, (self.agent_pos[0] + 1), self.agent_pos[1]] == 0 \
-                        and self.state[0, (self.agent_pos[0] + 2), self.agent_pos[1]] == 0:
-                    self.state[0, self.agent_pos[0], self.agent_pos[1]] = 1
-                    self.state[0, (self.agent_pos[0] + 1), self.agent_pos[1]] = 1
-                    self.state[0, (self.agent_pos[0] + 2), self.agent_pos[1]] = 1
-                    score_ = self.get_score()
-                    self.appt_idx += 1
-                    self.agent_pos = [(self.agent_pos[0] + 2), self.agent_pos[1]]
+                self.agent_pos = [(self.agent_pos[0] + k - 1), self.agent_pos[1]]
 
 
-        if cells_to_check == 4:
-            # check we're not at the bottom of the grid
-            if self.agent_pos[0] + 2 < max_row:
-                # check the next cells is also 0.0
-                # print('good for quad')
-                if self.state[0, self.agent_pos[0], self.agent_pos[1]] == 0 and \
-                        self.state[0, (self.agent_pos[0] + 1), self.agent_pos[1]] == 0 \
-                        and self.state[0, (self.agent_pos[0] + 2), self.agent_pos[1]] == 0 and \
-                        self.state[0, (self.agent_pos[0] + 3), self.agent_pos[1]] == 0:
-                    self.state[0, self.agent_pos[0], self.agent_pos[1]] = 1
-                    self.state[0, (self.agent_pos[0] + 1), self.agent_pos[1]] = 1
-                    self.state[0, (self.agent_pos[0] + 2), self.agent_pos[1]] = 1
-                    self.state[0, (self.agent_pos[0] + 3), self.agent_pos[1]] = 1
-                    score_ = self.get_score()
-                    self.appt_idx += 1
-                    self.agent_pos = [(self.agent_pos[0] + 3), self.agent_pos[1]]
+        # if cells_to_check == 1:
+        #     # print('good to check for single')
+        #     if self.state[0, self.agent_pos[0], self.agent_pos[1]] == 0:
+        #         self.state[0, self.agent_pos[0], self.agent_pos[1]] = 1
+        #         score_ = self.get_score()
+        #         self.appt_idx += 1
+
+        # if cells_to_check == 2:
+        #     # check we're not at the bottom of the grid
+        #     if self.agent_pos[0] < max_row:
+        #         # check the next cells is also 0.0
+        #         # print('good to check for double')
+        #         if self.state[0, self.agent_pos[0], self.agent_pos[1]] == 0 and \
+        #                 self.state[0, (self.agent_pos[0] + 1), self.agent_pos[1]] == 0:
+        #             self.state[0, self.agent_pos[0], self.agent_pos[1]] = 1
+        #             self.state[0, (self.agent_pos[0] + 1), self.agent_pos[1]] = 1
+        #             score_ = self.get_score()
+        #             self.appt_idx += 1
+        #             self.agent_pos = [(self.agent_pos[0] + 1), self.agent_pos[1]]
+        #             # print('after booking', self.agent_pos)
+
+        # if cells_to_check == 3:
+        #     # check we're not at the bottom of the grid
+        #     if self.agent_pos[0] + 1 < max_row:
+        #         # print('good to check for treble')
+        #         if self.state[0, self.agent_pos[0], self.agent_pos[1]] == 0 and \
+        #                 self.state[0, (self.agent_pos[0] + 1), self.agent_pos[1]] == 0 \
+        #                 and self.state[0, (self.agent_pos[0] + 2), self.agent_pos[1]] == 0:
+        #             self.state[0, self.agent_pos[0], self.agent_pos[1]] = 1
+        #             self.state[0, (self.agent_pos[0] + 1), self.agent_pos[1]] = 1
+        #             self.state[0, (self.agent_pos[0] + 2), self.agent_pos[1]] = 1
+        #             score_ = self.get_score()
+        #             self.appt_idx += 1
+        #             self.agent_pos = [(self.agent_pos[0] + 2), self.agent_pos[1]]
+
+
+        # if cells_to_check == 4:
+        #     # check we're not at the bottom of the grid
+        #     if self.agent_pos[0] + 2 < max_row:
+        #         # check the next cells is also 0.0
+        #         # print('good for quad')
+        #         if self.state[0, self.agent_pos[0], self.agent_pos[1]] == 0 and \
+        #                 self.state[0, (self.agent_pos[0] + 1), self.agent_pos[1]] == 0 \
+        #                 and self.state[0, (self.agent_pos[0] + 2), self.agent_pos[1]] == 0 and \
+        #                 self.state[0, (self.agent_pos[0] + 3), self.agent_pos[1]] == 0:
+        #             self.state[0, self.agent_pos[0], self.agent_pos[1]] = 1
+        #             self.state[0, (self.agent_pos[0] + 1), self.agent_pos[1]] = 1
+        #             self.state[0, (self.agent_pos[0] + 2), self.agent_pos[1]] = 1
+        #             self.state[0, (self.agent_pos[0] + 3), self.agent_pos[1]] = 1
+        #             score_ = self.get_score()
+        #             self.appt_idx += 1
+        #             self.agent_pos = [(self.agent_pos[0] + 3), self.agent_pos[1]]
 
         next_state = self.state
 
@@ -333,7 +351,8 @@ class SchedulerEnv(gym.Env):
         # print('new and old pos', new_agent_pos, self.agent_pos)
         # print(self.agent_pos)
         # if the agent is stuck on an edge then move to a new position
-        if self.agent_pos == self.old_agent_pos or (old_action+action)==5 or (old_action+action)==1:
+        # if self.agent_pos == self.old_agent_pos or (old_action+action)==5 or (old_action+action)==1:
+        if self.agent_pos == self.old_agent_pos:
         # if new_agent_pos == self.agent_pos:
             # self.agent_pos = [np.random.randint(self.num_slots), np.random.randint(self.num_gps)]
             # return self.state, -0.1, False, self.appt_idx, self.agent_pos, {}
@@ -369,6 +388,17 @@ class SchedulerEnv(gym.Env):
         if self.appt_idx == len(self.to_book):
             self.done = True
 
+        # # choose agent position randomly if the agent continuously gets bad reward some times
+        # if self.reward < 0.:
+        #     self.count += 1
+        # else:
+        #     self.count = 0
+        
+        # if self.count >=50:
+        #     self.agent_pos = [np.random.randint(self.num_slots), np.random.randint(self.num_gps)]
+        #     # self.reward = -0.2
+        #     self.count = 0
+
         # print(self.agent_pos)
         self.state[1, self.agent_pos[0], self.agent_pos[1]] = 100.0
         agent_state = self.state.copy()
@@ -376,4 +406,5 @@ class SchedulerEnv(gym.Env):
         # print('agent', agent_state)
 
         info = {}
-        return agent_state, self.reward, self.done, self.appt_idx, self.agent_pos, info
+        
+        return agent_state, self.reward, self.done, self.appt_idx, self.old_agent_pos, info

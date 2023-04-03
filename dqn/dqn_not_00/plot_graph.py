@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 from utils import load_data, plot_graph, plot_train, plot_traj, plot_trajs, average_filter
 
 # path
-name1 = 'sy2_17'
-name2 = 'sy2_17_test'
+name1 = 'sy2_55'
+name2 = 'sy2_55_test'
 path1 = './main_c/data/'
 path2 = './main_c/picture/'
 if not os.path.exists(path2 + name1):
@@ -16,6 +16,25 @@ if not os.path.exists(path2 + name1):
 score = load_data(path1 + name1 + '/score.pickle')
 episode_reward = load_data(path1 + name1 + '/episode_reward.pickle')
 step = load_data(path1 + name1 + '/step.pickle')
+# gamma = load_data(path1 + name1 + '/gamma.pickle')
+
+# gamma = []
+# init_gamma = 0.1
+# for _ in range(len(step)):
+#     if init_gamma < 0.99:
+#         init_gamma = 1-0.98*(1-init_gamma)
+#         gamma.append(init_gamma)
+#     else:
+#         gamma.append(0.99)
+
+# episode_index = np.linspace(0, len(gamma), len(gamma))
+# fig1, ax1 = plt.subplots(figsize=(5,5))
+# ax1.plot(episode_index, gamma, 'r-')
+# # ax2.fill_between(episode_index, data1, data2, color='r', alpha=0.2)
+# plt.title('gamma')
+# ax1.set(xlabel='episode')
+# fig1.savefig(path2 + name1 + '/gamma.png', dpi=600, format='png')
+# plt.close()
 
 # test data
 # test_score = load_data(path1 + name1 + '/test_score.pickle')

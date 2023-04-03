@@ -12,8 +12,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from utils import set_seeds, sample, plot_trajs, plot_traj, save_data
-from model import Model
+from utils import set_seeds, sample, plot_trajs, plot_traj, save_data, gradient_cascade
+from model import Model, NoisyDQN
 from environment import SchedulerEnv
 
 
@@ -22,7 +22,8 @@ set_seeds(seeds)
 
 # Hyperparameters
 batch_size = 32 # 16, 64
-gamma = 0.3
+gamma = 0.1
+K = 2
 
 epsilon = 0.3
 eps_decay = 0.995
@@ -31,12 +32,12 @@ eps_min = 0.001      # Minimal exploration rate (epsilon-greedy)
 num_rounds = int(1e4)
 # num_episodes = 500
 learning_limit = 100
-replay_limit = 1000  # Number of steps until starting replay
+replay_limit = int(5e3)  # Number of steps until starting replay
 # weight_update = 1000 # Number of steps until updating the target weights
 
 # save path
-name1 = 'sy2_17'
-name2 = 'sy2_17_test'
+name1 = 'sy2_60'
+name2 = 'sy2_60_test'
 path_dir = './main_c/'
 path = path_dir + 'data/'
 
@@ -48,10 +49,12 @@ env = SchedulerEnv()
 # writer = SummaryWriter(comment="Scheduler DQN")
 
 # create the current network and target network
-policy_model = Model(env.observation_space.shape, env.action_space.n).to(device)
+# policy_model = Model(env.observation_space.shape, env.action_space.n).to(device)
+policy_model = NoisyDQN(env.observation_space.shape, env.action_space.n).to(device)
 # policy_model.apply(weight_init)
 
-target_model = Model(env.observation_space.shape, env.action_space.n).to(device)
+# target_model = Model(env.observation_space.shape, env.action_space.n).to(device)
+target_model = NoisyDQN(env.observation_space.shape, env.action_space.n).to(device)
 target_model.load_state_dict(policy_model.state_dict())
 
 criterion = nn.MSELoss()
@@ -59,9 +62,11 @@ optimizer = optim.Adam(policy_model.parameters(), lr=1e-4)
 # optim.lr_scheduler.StepLR(optimizer, 3, 0.6)
 
 # Exploration rate
-replay_buffer = deque(maxlen=1000)
+replay_buffer = deque(maxlen=5000)
 
 loss_total = []
+stopped_index_record = []
+gamma_record = []
 
 score_total = []
 episode_reward_total = []
@@ -70,6 +75,10 @@ step_total = []
 test_score_total = []
 test_episode_reward_total = []
 test_step_total = []
+
+agent_pos_total = []
+bad_choice_total = []
+good_position_total = []
 
 fre_count = 0
 
@@ -88,6 +97,48 @@ for i in range(num_rounds):
     agent_pos_record = []
     expect_pos_record = []
     bad_choice = []
+    good_position = []
+
+    # episode_state_topk = [state]
+    # episode_reward_topk = []
+    # episode_action_topk = []
+
+    # dynamic gamma
+    # increase initial gamma=0.1
+    # if i <= 10:
+    #     if gamma < 0.99:
+    #         gamma = 1 - 0.98 * (1 - gamma)
+    #     else:
+    #         gamma = 0.99
+    #     if i == 10:
+    #         last_avg_step = sum(step_total[-10:]) / 10
+    # else:
+    #     avg_step = sum(step_total[-10:]) / 10
+    #     if (avg_step >= 500) or ((avg_step - last_avg_step) > 50):
+    #         if gamma < 0.99:
+    #             gamma = 1 - 0.98 * (1 - gamma)
+    #         else:
+    #             gamma = 0.99
+    #     else:
+    #         if avg_step < last_avg_step:
+    #             best_gamma = gamma
+    #         gamma = best_gamma
+
+    #     last_avg_step = avg_step
+
+    if gamma < 0.99:
+        gamma = 1 - 0.98 * (1 - gamma)
+    else:
+        gamma = 0.99
+
+    gamma_record.append(gamma)
+
+    # # decrease initial gamma=0.9
+    # if gamma > 0.1:
+    #     # gamma = 1 - 0.98 * (1 - gamma)
+    #     gamma = 0.98 * gamma
+    # else:
+    #     gamma = 0.1
 
     # print('reset here')
     for j in range(1000):
@@ -102,7 +153,7 @@ for i in range(num_rounds):
         old_action = action
 
         # Select and perform an action
-        # if step_idx > learning_limit:
+        # # if step_idx > learning_limit:
         if ((np.random.rand()) < epsilon):
         # if np.random.rand() < epsilon:
             action = np.random.randint(env.action_space.n)
@@ -111,21 +162,31 @@ for i in range(num_rounds):
             # action = torch.argmax(policy_model(torch.from_numpy(state).to(torch.float32).to(device)).cpu())
             action = torch.argmax(policy_model(torch.from_numpy(state).to(torch.float32).unsqueeze(0).to(device)).cpu()).item()
         
+        # action = torch.argmax(policy_model(torch.from_numpy(state).to(torch.float32).unsqueeze(0).to(device)).cpu()).item()
+        
         # print("episode:{} step:{} action:{}".format(i, j, action))
         next_state, reward, done, index, agent_pos, _ = env.step(action, old_action)
 
         agent_pos_record.append(agent_pos)
         # expect_pos_record.append(env.position)
 
-        if reward < -0.1:
+        if reward < -0.2:
             count_stop += 1
             bad_choice.append(agent_pos)
+        
+        if reward > 0.:
+            good_position.append(agent_pos)
 
         score_list.append(env.scores)
         episode_reward += reward
         reward = torch.tensor(reward)
         fre_count += 1
-        replay_buffer.append((state, action, reward, next_state, done))  
+        replay_buffer.append((state, action, reward, next_state, done))
+
+        # top K transition store
+        # episode_state_topk.append(next_state)
+        # episode_action_topk.append(action)
+        # episode_reward_topk.append(reward)
 
         # print('here rewards', episode_reward, reward, step_idx)
 
@@ -170,6 +231,18 @@ for i in range(num_rounds):
             next_qval = next_qval.to(torch.float32)
             # print('next_qval', next_qval, next_qval.size())
 
+            # # top K calculate process
+            # obs = episode_state_topk[-1]
+            # act = torch.argmax(policy_model(torch.from_numpy(obs).to(torch.float32).unsqueeze(0).to(device)).cpu()).item()
+            # prob = target_model(torch.from_numpy(obs).to(torch.float32).unsqueeze(0).to(device)).cpu()
+            # prob_act = prob[0][act]
+            # # DQN does not need off-policy correction
+            # # off_policy_correction = min(prob_act, 1)
+            # tok_correction = gradient_cascade(prob_act, K)
+            # # print("off_co:{}".format(off_policy_correction))
+            # # print("tok_co:{}".format(tok_correction))
+            # loss = criterion(q_eval, next_qval) * tok_correction
+
             loss = criterion(q_eval, next_qval)
             # loss = F.mse_loss(q_eval, next_qval)
             # print('loss: ', loss.item())
@@ -179,6 +252,11 @@ for i in range(num_rounds):
 
             optimizer.step()
             loss_total.append(loss.cpu().item())
+
+            # Noisy DQN
+            policy_model.reset_noise()
+            target_model.reset_noise()
+
             # for name, parms in policy_model.named_parameters():
                 # if parms.requires_grad:
                 #     print(name)
@@ -209,6 +287,7 @@ for i in range(num_rounds):
     # if count_stop < 10:
     episode_reward_total.append(episode_reward)
     step_total.append(step_idx)
+    stopped_index_record.append(index)
     score_list_ = []
     for t in range(len(score_list)):
         if score_list[t] >= 0:
@@ -216,10 +295,15 @@ for i in range(num_rounds):
 
     score_total.append(sum(score_list_))
 
+    agent_pos_total.append(agent_pos_record)
+    bad_choice_total.append(bad_choice)
+    good_position_total.append(good_position)
+
     # if episode_reward < 0:
-    if index < 50:
-        plot_trajs(env.num_gps, env.num_slots, agent_pos_record, expect_pos_record, bad_choice, i, path_dir + 'train_traj_record/' + name1)
-    # plot_traj(step_idx, env.num_gps, env.num_slots, agent_pos_record, bad_choice, i, path_dir + 'train_traj_record/' + name1)
+    # if index < 50:
+    if i % 100 == 0:
+        # plot_trajs(env.num_gps, env.num_slots, agent_pos_record, expect_pos_record, bad_choice, good_position, index, sum(score_list_), i, path_dir + 'train_traj_record/' + name1)
+        plot_traj(env.num_gps, env.num_slots, agent_pos_record, expect_pos_record, bad_choice, good_position, index, sum(score_list_), i, path_dir + 'train_traj_record/' + name1)
 
     if i % 100 == 0:
         print('episode: {}'.format(i))
@@ -285,9 +369,13 @@ if not os.path.exists(path + name1):
 save_data(score_total, path + name1 + '/score.pickle')
 save_data(episode_reward_total, path + name1 + '/episode_reward.pickle')
 save_data(step_total, path + name1 + '/step.pickle')
-
+save_data(stopped_index_record, path + name1 + '/stopped_index.pickle')
+save_data(gamma_record, path + name1 + '/gamma.pickle')
 # save_data(test_score_total, path + name1 + '/test_score.pickle')
 # save_data(test_episode_reward_total, path + name1 + '/test_episode_reward.pickle')
 # save_data(test_step_total, path + name1 + '/test_step.pickle')
+save_data(agent_pos_total, path + name1 + '/agent_position.pickle')
+save_data(bad_choice_total, path + name1 + '/bad_choice.pickle')
+save_data(good_position_total, path + name1 + '/good_choice.pickle')
 
 torch.save(policy_model, path_dir + 'save_model/' + name1 + '_model.pkl')
