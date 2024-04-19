@@ -1,0 +1,1 @@
+This is project for resource management framework to explore how the simulated software agent can be utilises a resource manager to balance exploration and exploitation in solutions to provide combinatorial optimization from both theoretical and experimental perspectives. 
